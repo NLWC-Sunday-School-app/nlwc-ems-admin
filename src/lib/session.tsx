@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ApiError, api, setUnauthenticatedHandler } from "./api";
 import type { AccessMe, Edition, LoginResult, Me } from "./types";
 import { can as hasPermission } from "./format";
@@ -11,6 +11,12 @@ function readEdition(): string | null {
 }
 function writeEdition(id: string | null) {
   try { id ? localStorage.setItem(EDITION_KEY, id) : localStorage.removeItem(EDITION_KEY); } catch { /* storage can be blocked */ }
+}
+
+/** Drops everything cached for the person who was signed in (including any health shown in a drawer's parent views) and shows sign-in. */
+function forgetEverything(qc: QueryClient) {
+  qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
+  qc.setQueryData(["me"], null);
 }
 
 type Session = {
@@ -40,13 +46,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const [editionId, setEditionIdState] = useState<string | null>(readEdition);
 
+  // null means "nobody is signed in", which is an answer, not an error.
   const meQuery = useQuery({
     queryKey: ["me"],
-    queryFn: () => api.get<Me>("auth/me"),
+    queryFn: async (): Promise<Me | null> => {
+      try { return await api.get<Me>("auth/me"); } catch (e) { if (e instanceof ApiError && e.status === 401) return null; throw e; }
+    },
     retry: false,
     staleTime: 30_000,
   });
-  const me = meQuery.data;
+  const me = meQuery.data ?? undefined;
   const ready = !!me?.mfaVerified;
 
   const accessQuery = useQuery({
@@ -93,9 +102,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setUnauthenticatedHandler(() => {
-      qc.clear();
-      qc.setQueryData(["me"], undefined);
-      void qc.invalidateQueries({ queryKey: ["me"] });
+      // Only a signed-in session can be "lost". The sign-in check itself answers 401 when nobody is signed in.
+      if (!qc.getQueryData(["me"])) return;
+      forgetEverything(qc);
     });
     return () => setUnauthenticatedHandler(null);
   }, [qc]);
@@ -108,9 +117,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     try { await api.post("auth/logout"); } catch { /* the cookie is cleared server-side; either way we leave */ }
-    qc.clear();
-    qc.setQueryData(["me"], undefined);
-    await qc.invalidateQueries({ queryKey: ["me"] });
+    forgetEverything(qc);
   }, [qc]);
 
   const refreshMe = useCallback(async () => {

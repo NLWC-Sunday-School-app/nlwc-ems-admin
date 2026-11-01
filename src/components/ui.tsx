@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ApiError } from "../lib/api";
 import { explainError } from "../lib/format";
 
@@ -58,6 +58,7 @@ export function ReasonDialog({ title, description, confirmLabel, danger, open, b
   onCancel: () => void; onConfirm: (reason: string) => void; children?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const uid = useId();
   const [reason, setReason] = useState("");
 
   useEffect(() => {
@@ -73,14 +74,14 @@ export function ReasonDialog({ title, description, confirmLabel, danger, open, b
   };
 
   return (
-    <dialog ref={ref} className="dlg" aria-labelledby="dlg-title" onCancel={(e) => { e.preventDefault(); onCancel(); }}>
+    <dialog ref={ref} className="dlg" aria-labelledby={`${uid}-title`} onCancel={(e) => { e.preventDefault(); onCancel(); }}>
       <form onSubmit={submit} className="stack-4" style={{ display: "grid", gap: "var(--space-4)" }}>
-        <h2 id="dlg-title">{title}</h2>
+        <h2 id={`${uid}-title`}>{title}</h2>
         {description && <div className="sm muted">{description}</div>}
         {children}
         <div className="field">
-          <label htmlFor="dlg-reason">Reason <span className="muted">(required, recorded in the audit log)</span></label>
-          <textarea id="dlg-reason" className="textarea" rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} required autoFocus />
+          <label htmlFor={`${uid}-reason`}>Reason <span className="muted">(required, recorded in the audit log)</span></label>
+          <textarea id={`${uid}-reason`} className="textarea" rows={3} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} required autoFocus />
         </div>
         <ErrorAlert error={error} />
         <div className="row" style={{ justifyContent: "flex-end" }}>

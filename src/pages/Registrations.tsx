@@ -26,7 +26,7 @@ export function RegistrationsPage() {
     placeholderData: (prev) => prev,
   });
 
-  if (!edition || !editionId) return <section><div className="page-h"><div><h1>Registrations</h1></div></div><Empty title="Choose an edition">Use the switcher at the top.</Empty></section>;
+  if (!editionId) return <section><div className="page-h"><div><h1>Registrations</h1></div></div><Empty title="Choose an edition">Use the switcher at the top, or paste an edition id if you cannot list editions.</Empty></section>;
   if (!can("registrations:view")) return <section><div className="page-h"><div><h1>Registrations</h1></div></div><Forbidden need="registrations:view" /></section>;
 
   const rows = q.data?.data ?? [];
@@ -34,7 +34,7 @@ export function RegistrationsPage() {
 
   return (
     <section>
-      <div className="page-h"><div><h1>Registrations</h1><p>{edition.name}. Health details are never in this list.</p></div></div>
+      <div className="page-h"><div><h1>Registrations</h1><p>{edition?.name ?? "This edition"}. Health details are never in this list.</p></div></div>
       <div className="card flush">
         <div className="toolbar">
           <label className="sr" htmlFor="state-filter">State</label>

@@ -16,7 +16,7 @@ const timeValue = (v: string | null) => (v ? v.slice(0, 5) : "");
 export function EditionsPage() {
   const { can, setEditionId, editionsRestricted } = useSession();
   const [creating, setCreating] = useState(false);
-  const list = useQuery({ queryKey: ["editions"], queryFn: () => api.get<Edition[]>("edition"), retry: false });
+  const list = useQuery({ queryKey: ["edition-list"], queryFn: () => api.get<Edition[]>("edition"), retry: false });
   const canEdit = can("config:edit", false);
 
   if (list.error instanceof ApiError && list.error.status === 403) return <section><div className="page-h"><div><h1>Event editions</h1></div></div><Forbidden need="config:view" /></section>;
@@ -67,6 +67,7 @@ function NewEdition({ onDone }: { onDone: (id: string) => void }) {
     mutationFn: (input: CreateEditionInput) => api.post<Edition>("edition", input),
     onSuccess: async (edition) => {
       await qc.invalidateQueries({ queryKey: ["editions"] });
+      await qc.invalidateQueries({ queryKey: ["edition-list"] });
       onDone(edition.id);
       void navigate({ to: "/editions/$editionId", params: { editionId: edition.id } });
     },
@@ -122,6 +123,7 @@ export function EditionDetail() {
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["edition", editionId] });
     await qc.invalidateQueries({ queryKey: ["editions"] });
+    await qc.invalidateQueries({ queryKey: ["edition-list"] });
   };
 
   const transition = useMutation({

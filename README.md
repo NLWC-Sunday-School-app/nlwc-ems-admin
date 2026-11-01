@@ -1,8 +1,59 @@
 # nlwc-ems-admin
-Staff console (Vite + React SPA). Talks only to `nlwc-ems-api`.
-Design tokens and shared helpers come from `nlwc-ems-api/shared` as git dependencies. See the engineering plan in the API repo's `documentation/`.
+
+Staff console for the NLWC Event Management System (Vite + React 19 + TanStack Router/Query). It talks only to
+[`nlwc-ems-api`](https://github.com/Oduology/nlwc-ems-api). Design tokens and component CSS come from `@nlwc/ui`
+(`nlwc-ems-api/shared/ui`, installed as a git dependency); there is no design of its own.
+
+## Run it
 
 ```
 pnpm install
-pnpm dev
+API_URL=http://localhost:4000 pnpm dev      # console on http://localhost:3001
 ```
+
+The dev server proxies `/api` to `API_URL`, so the browser sees one origin and the API's cookies and CSRF check work
+unchanged. The API must list `http://localhost:3001` under `Cors:AllowedOrigins`, and for plain-http local work run it with
+`Security__CookieSecure=false`.
+
+| Command | What it does |
+|---|---|
+| `pnpm dev` | dev server on :3001 |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm test` | vitest (API client, formatters, rate-rule builder, role matrix) |
+| `pnpm build` | typecheck + production build in `dist/` |
+
+### First staff sign-in
+
+1. Sign the person up on the web app (or `POST api/v1/auth/signup`).
+2. Grant a role. The very first Super Admin comes from the API CLI: `dotnet run --project nlwc-ems.api --no-launch-profile -- --bootstrap-admin <email>`. After that, grant roles from **Staff & roles**.
+3. Sign in here. Staff permissions only count on an MFA-verified session, so the console asks for the authenticator code before it loads anything else. First time only, choose **Set up an authenticator**, scan the QR code and enter the code.
+
+> Don't press "Set up an authenticator" if you already have one: it replaces the key your app uses today.
+
+## Screens
+
+| Screen | Needs | Notes |
+|---|---|---|
+| Sign-in and MFA | none | the gate for everything below |
+| Dashboard | `registrations:view` | registration counts by state, lifecycle, capabilities on |
+| Event editions | `config:view` / `config:edit` | create, edit settings, capability switches and stage moves (each asks for a reason) |
+| Pricing & rate plans | `pricing:draft` / `pricing:approve` | draft rate versions, approve (a different person), publish |
+| Registrations | `registrations:view` | queue by state; a drawer with a deliberate, logged **Reveal health** (`health:view`) |
+| Staff & roles | `staff:view` / `staff:edit` | role matrix, grants, grant and revoke with a reason |
+| Audit log | `audit:view` | paged events, detail, **Verify chain** |
+
+Navigation is built from `GET access/me`. Hiding a link is cosmetic: the API checks every call again.
+
+## Rules this console keeps
+
+- Every dangerous action asks for a reason, and the reason goes to the audit log.
+- Health details live in component state only: never in the query cache or any browser storage, cleared on close, **Hide now**, sign-out, or after 90 seconds. The queue shows only whether something was declared, and only to roles with `health:flags`.
+- The edition switcher scopes every screen; the choice is remembered in `localStorage` (an id, nothing sensitive).
+- Roles without `config:view` (Finance, Medical/Welfare) can't list editions, so they paste the edition id they were given.
+
+## Known gaps (waiting on the API)
+
+- No list of rate versions: the Pricing screen tracks versions drafted in this browser session; older ones are tracked by pasting their id.
+- No staff directory: a grant needs the person's account id.
+- `auth/me` doesn't say whether an authenticator is already enrolled, hence the two-path MFA screen.
+- No revenue, capacity or check-in numbers yet, so the dashboard shows only registration counts.

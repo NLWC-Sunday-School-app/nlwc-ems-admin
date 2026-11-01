@@ -53,7 +53,7 @@ export function PricingPage() {
     },
   });
 
-  if (!edition || !editionId) return <section><div className="page-h"><div><h1>Pricing &amp; rate plans</h1></div></div><Empty title="Choose an edition">Use the switcher at the top.</Empty></section>;
+  if (!editionId) return <section><div className="page-h"><div><h1>Pricing &amp; rate plans</h1></div></div><Empty title="Choose an edition">Use the switcher at the top, or paste an edition id if you cannot list editions.</Empty></section>;
   if (!canDraft && !canApprove) return <section><div className="page-h"><div><h1>Pricing &amp; rate plans</h1></div></div><Forbidden need="pricing:draft or pricing:approve" /></section>;
 
   const setRow = (i: number, patch: Partial<RuleDraft>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
@@ -69,7 +69,7 @@ export function PricingPage() {
 
   return (
     <section>
-      <div className="page-h"><div><h1>Pricing &amp; rate plans</h1><p>{edition.name}. Rates are versioned: drafted, approved by a different person, then published. A published version never changes.</p></div></div>
+      <div className="page-h"><div><h1>Pricing &amp; rate plans</h1><p>{edition?.name ?? "This edition"}. Rates are versioned: drafted, approved by a different person, then published. A published version never changes.</p></div></div>
 
       {canDraft && (
         <form className="card stack-3" onSubmit={submit} aria-labelledby="draft-h">
