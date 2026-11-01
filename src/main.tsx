@@ -1,5 +1,10 @@
 import { createRoot } from "react-dom/client";
 import "@nlwc/ui/tokens.css";
 import "@nlwc/ui/components.css";
+import "./app.css";
+import { App } from "./app";
+import { applySavedTheme } from "./components/ThemeToggle";
 
-createRoot(document.getElementById("root")!).render(<h1>NLWC EMS Admin</h1>);
+applySavedTheme();
+
+createRoot(document.getElementById("root")!).render(<App />);
