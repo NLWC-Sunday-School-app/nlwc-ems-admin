@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ApiError, api, setUnauthenticatedHandler } from "./api";
-import type { AccessMe, Edition, LoginResult, Me } from "./types";
+import type { AccessMe, EditionSummary, LoginResult, Me } from "./types";
 import { can as hasPermission } from "./format";
 
 const EDITION_KEY = "nlwc-admin-edition";
@@ -23,10 +23,9 @@ type Session = {
   status: "loading" | "signedOut" | "needsMfa" | "ready";
   me: Me | undefined;
   access: AccessMe | undefined;
-  editions: Edition[];
-  editionsRestricted: boolean;
+  editions: EditionSummary[];
   editionId: string | null;
-  edition: Edition | undefined;
+  edition: EditionSummary | undefined;
   setEditionId: (id: string | null) => void;
   can: (code: string, scoped?: boolean) => boolean;
   signIn: (email: string, password: string) => Promise<LoginResult>;
@@ -62,28 +61,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryKey: ["access", editionId],
     queryFn: () => api.get<AccessMe>("access/me", { editionId }),
     enabled: ready,
+    // Switching edition refetches with a new key; without this the nav empties for a moment and screens flash "forbidden".
+    placeholderData: keepPreviousData,
   });
 
-  // Listing editions needs config:view. Without it, fall back to the public list so the switcher still has something to show.
+  // The editions this person's grants cover. Works for every staff role, unlike the full list, which needs config:view.
   const editionsQuery = useQuery({
-    queryKey: ["editions"],
+    queryKey: ["my-editions"],
     enabled: ready,
     retry: false,
-    queryFn: async (): Promise<{ list: Edition[]; restricted: boolean }> => {
-      try {
-        return { list: await api.get<Edition[]>("edition"), restricted: false };
-      } catch (e) {
-        if (e instanceof ApiError && e.status === 403) {
-          const pub = await api.get<{ slug: string; code: string; name: string; startsOn: string; endsOn: string }[]>("public/edition");
-          // Public rows carry no ids, so they cannot scope a screen; they only tell the person which editions exist.
-          return { restricted: true, list: pub.filter((p) => "id" in p) as unknown as Edition[] };
-        }
-        throw e;
-      }
-    },
+    queryFn: () => api.get<EditionSummary[]>("edition/mine"),
   });
 
-  const editions = editionsQuery.data?.list ?? [];
+  const editions = editionsQuery.data ?? [];
   useEffect(() => {
     // Keep the saved choice only if it still exists; otherwise default to the first edition.
     if (!ready || !editionsQuery.data) return;
@@ -130,7 +120,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Session>(() => ({
     status, me, access, editions,
-    editionsRestricted: editionsQuery.data?.restricted ?? false,
     editionId,
     edition: editions.find((e) => e.id === editionId),
     setEditionId,

@@ -49,11 +49,12 @@ Navigation is built from `GET access/me`. Hiding a link is cosmetic: the API che
 - Every dangerous action asks for a reason, and the reason goes to the audit log.
 - Health details live in component state only: never in the query cache or any browser storage, cleared on close, **Hide now**, sign-out, or after 90 seconds. The queue shows only whether something was declared, and only to roles with `health:flags`.
 - The edition switcher scopes every screen; the choice is remembered in `localStorage` (an id, nothing sensitive).
-- Roles without `config:view` (Finance, Medical/Welfare) can't list editions, so they paste the edition id they were given.
+- The edition switcher is fed by `GET edition/mine`, so every staff role sees the editions its grants cover, with or without `config:view`.
+- MFA: if `auth/me` says an authenticator exists, only a code is asked for (setup would replace it, and the API now refuses that). Otherwise setup starts by itself.
+- Pricing lists every rate version from `GET edition/{id}/rates`; granting a role finds the person by email (`GET rolegrant/lookup`).
 
 ## Known gaps (waiting on the API)
 
-- No list of rate versions: the Pricing screen tracks versions drafted in this browser session; older ones are tracked by pasting their id.
-- No staff directory: a grant needs the person's account id.
-- `auth/me` doesn't say whether an authenticator is already enrolled, hence the two-path MFA screen.
+- Lost authenticator: there is no admin reset yet, so a locked-out staff member needs the database changed by hand.
+- Role grants still list a short account id, not the person's email.
 - No revenue, capacity or check-in numbers yet, so the dashboard shows only registration counts.

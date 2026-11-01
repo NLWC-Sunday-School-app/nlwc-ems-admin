@@ -10,7 +10,10 @@ export type ParticipationMode = "Day" | "Camp" | "Online";
 export type Capability = "Accommodation" | "DailyCheckin" | "CampReview" | "StudioRequests" | "ParentForum" | "PaidRegistration";
 export type RateKind = "Amount" | "Free";
 
-export type Me = { personId: string; surface: string; mfaVerified: boolean; emailVerified: boolean };
+export type Me = { personId: string; surface: string; mfaVerified: boolean; emailVerified: boolean; mfaEnrolled: boolean };
+
+/** One row of `edition/mine`: what the switcher needs, for any role that holds a grant. */
+export type EditionSummary = { id: string; slug: string; code: string; name: string; startsOn: string; endsOn: string; stage: EditionStage | null };
 export type LoginResult = { csrfToken: string; mfaVerified: boolean; emailVerified: boolean };
 export type Permission = { code: string; editionId: string | null };
 export type AccessMe = { mfaVerified: boolean; permissions: Permission[] };
@@ -64,6 +67,20 @@ export type UpdateEditionInput = {
   pickupWindowStart: string | null;
   pickupWindowEnd: string | null;
 };
+
+export type RateVersion = {
+  versionId: string;
+  version: number;
+  state: "Draft" | "Approved" | "Published" | "Retired";
+  draftedBy: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  publishedAt: string | null;
+  note: string | null;
+  rules: RateRuleInput[];
+};
+
+export type StaffLookup = { accountId: string; email: string; givenName: string; familyName: string };
 
 export type RateRuleInput = {
   ageMin: number;

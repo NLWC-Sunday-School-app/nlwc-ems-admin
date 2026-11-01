@@ -1,21 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ApiError, api } from "../lib/api";
-import { MODE_LABEL, buildRules, formatKobo, formatDateTime, type RuleDraft } from "../lib/format";
+import { MODE_LABEL, buildRules, formatKobo, formatDateTime, shortId, type RuleDraft } from "../lib/format";
 import { useSession } from "../lib/session";
-import type { ParticipationMode, RateRuleInput } from "../lib/types";
-import { Empty, ErrorAlert, Forbidden, ReasonDialog } from "../components/ui";
-
-type Tracked = { versionId: string; note: string; draftedAt: string; state: "Draft" | "Approved" | "Published"; rules: RateRuleInput[] };
-
-const storeKey = (editionId: string) => `nlwc-admin-rates:${editionId}`;
-function load(editionId: string): Tracked[] {
-  try { return JSON.parse(sessionStorage.getItem(storeKey(editionId)) ?? "[]") as Tracked[]; } catch { return []; }
-}
-function save(editionId: string, list: Tracked[]) {
-  try { sessionStorage.setItem(storeKey(editionId), JSON.stringify(list)); } catch { /* storage can be blocked */ }
-}
+import type { ParticipationMode, RateRuleInput, RateVersion } from "../lib/types";
+import { Empty, ErrorAlert, Forbidden, Loading, ReasonDialog } from "../components/ui";
 
 const blankRule = (): RuleDraft => ({ ageMin: "0", ageMax: "", mode: "", kind: "Free", naira: "" });
 
@@ -24,36 +14,38 @@ export function PricingPage() {
   const [rows, setRows] = useState<RuleDraft[]>([blankRule()]);
   const [note, setNote] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
-  const [tracked, setTracked] = useState<Tracked[]>(() => (editionId ? load(editionId) : []));
   const [target, setTarget] = useState<{ versionId: string; action: "approve" | "publish" } | null>(null);
-  const [manualId, setManualId] = useState("");
-  const [lastEdition, setLastEdition] = useState(editionId);
-
-  if (editionId !== lastEdition) { setLastEdition(editionId); setTracked(editionId ? load(editionId) : []); }
+  const qc = useQueryClient();
 
   const canDraft = can("pricing:draft");
   const canApprove = can("pricing:approve");
 
-  const persist = (next: Tracked[]) => { setTracked(next); if (editionId) save(editionId, next); };
+  const canSee = canDraft || canApprove;
+  const versions = useQuery({
+    queryKey: ["rates", editionId],
+    enabled: !!editionId && canSee,
+    queryFn: () => api.get<RateVersion[]>(`edition/${editionId}/rates`),
+  });
+  const refresh = () => qc.invalidateQueries({ queryKey: ["rates", editionId] });
 
   const draft = useMutation({
     mutationFn: (v: { note: string; rules: RateRuleInput[] }) => api.post<{ versionId: string }>(`edition/${editionId}/rates`, { note: v.note || null, rules: v.rules }),
-    onSuccess: (r, v) => {
-      persist([{ versionId: r.versionId, note: v.note, draftedAt: new Date().toISOString(), state: "Draft", rules: v.rules }, ...tracked]);
+    onSuccess: async () => {
       setRows([blankRule()]);
       setNote("");
+      await refresh();
     },
   });
 
   const act = useMutation({
     mutationFn: (v: { versionId: string; action: "approve" | "publish"; reason: string }) => api.post(`edition/${editionId}/rates/${v.versionId}/${v.action}`, { note: v.reason }),
-    onSuccess: (_r, v) => {
-      persist(tracked.map((t) => (t.versionId === v.versionId ? { ...t, state: v.action === "approve" ? "Approved" : "Published" } : t)));
+    onSuccess: async () => {
       setTarget(null);
+      await refresh();
     },
   });
 
-  if (!editionId) return <section><div className="page-h"><div><h1>Pricing &amp; rate plans</h1></div></div><Empty title="Choose an edition">Use the switcher at the top, or paste an edition id if you cannot list editions.</Empty></section>;
+  if (!editionId) return <section><div className="page-h"><div><h1>Pricing &amp; rate plans</h1></div></div><Empty title="Choose an edition">Use the switcher at the top.</Empty></section>;
   if (!canDraft && !canApprove) return <section><div className="page-h"><div><h1>Pricing &amp; rate plans</h1></div></div><Forbidden need="pricing:draft or pricing:approve" /></section>;
 
   const setRow = (i: number, patch: Partial<RuleDraft>) => setRows((r) => r.map((x, j) => (j === i ? { ...x, ...patch } : x)));
@@ -97,26 +89,19 @@ export function PricingPage() {
       )}
 
       <div className="card stack-3" style={{ marginTop: "var(--space-4)" }}>
-        <div className="card-h"><h3>Versions you are working on</h3></div>
-        <div className="note">The API has no list of rate versions yet, so this list holds versions drafted in this browser session. To act on an older version, paste its id below.</div>
-        {tracked.length === 0 ? <Empty title="Nothing drafted in this session" /> : (
+        <div className="card-h"><h3>Versions</h3></div>
+        {versions.isLoading ? <Loading what="Loading versions" /> : versions.error ? <ErrorAlert error={versions.error} /> : (versions.data ?? []).length === 0 ? <Empty title="No rates drafted yet">Until a price is published, registration cannot be opened.</Empty> : (
           <div className="tbl-wrap"><table>
             <thead><tr><th>Version</th><th>Rules</th><th>State</th><th><span className="sr">Actions</span></th></tr></thead>
-            <tbody>{tracked.map((t) => (
-              <tr key={t.versionId}>
-                <td><div className="mono xs">{t.versionId}</div><div className="xs muted">{t.note || "No note"} · drafted {formatDateTime(t.draftedAt)}</div></td>
-                <td className="xs">{t.rules.map((r, i) => <div key={i}>{r.ageMin}{r.ageMax === null ? "+" : `–${r.ageMax}`} · {r.participationMode ? MODE_LABEL[r.participationMode] : "any mode"} · {r.kind === "Free" ? "Free" : formatKobo(r.amountKobo ?? 0)}</div>)}</td>
-                <td><span className={`badge ${t.state === "Published" ? "b-ok" : t.state === "Approved" ? "b-info" : "b-neutral"}`}>{t.state}</span></td>
-                <td className="right">{canApprove && t.state === "Draft" && <button className="btn btn-secondary btn-sm" onClick={() => { act.reset(); setTarget({ versionId: t.versionId, action: "approve" }); }}>Approve</button>}
-                  {canApprove && t.state === "Approved" && <button className="btn btn-primary btn-sm" onClick={() => { act.reset(); setTarget({ versionId: t.versionId, action: "publish" }); }}>Publish</button>}</td>
+            <tbody>{versions.data!.map((v) => (
+              <tr key={v.versionId}>
+                <td><b>v{v.version}</b><div className="xs muted">{v.note || "No note"}</div>
+                  <div className="xs muted">Drafted by <span className="mono" title={v.draftedBy}>{shortId(v.draftedBy)}…</span>{v.approvedBy && <> · approved by <span className="mono" title={v.approvedBy}>{shortId(v.approvedBy)}…</span> {v.approvedAt && formatDateTime(v.approvedAt)}</>}{v.publishedAt && <> · published {formatDateTime(v.publishedAt)}</>}</div></td>
+                <td className="xs">{v.rules.map((r, i) => <div key={i}>{r.ageMin}{r.ageMax === null ? "+" : `–${r.ageMax}`} · {r.participationMode ? MODE_LABEL[r.participationMode] : "any mode"} · {r.kind === "Free" ? "Free" : formatKobo(r.amountKobo ?? 0)}</div>)}</td>
+                <td><span className={`badge ${v.state === "Published" ? "b-ok" : v.state === "Approved" ? "b-info" : "b-neutral"}`}>{v.state}</span></td>
+                <td className="right">{canApprove && v.state === "Draft" && <button className="btn btn-secondary btn-sm" onClick={() => { act.reset(); setTarget({ versionId: v.versionId, action: "approve" }); }}>Approve</button>}
+                  {canApprove && v.state === "Approved" && <button className="btn btn-primary btn-sm" onClick={() => { act.reset(); setTarget({ versionId: v.versionId, action: "publish" }); }}>Publish</button>}</td>
               </tr>))}</tbody></table></div>
-        )}
-        {canApprove && (
-          <form className="row" onSubmit={(e) => { e.preventDefault(); const id = manualId.trim(); if (/^[0-9a-f-]{36}$/i.test(id) && !tracked.some((t) => t.versionId === id)) { persist([{ versionId: id, note: "Added by id", draftedAt: new Date().toISOString(), state: "Draft", rules: [] }, ...tracked]); setManualId(""); } }}>
-            <label htmlFor="manual-id" className="sr">Version id</label>
-            <input id="manual-id" className="input mono" style={{ maxWidth: 380 }} placeholder="Paste a version id" value={manualId} onChange={(e) => setManualId(e.target.value)} />
-            <button className="btn btn-secondary btn-sm" disabled={!/^[0-9a-f-]{36}$/i.test(manualId.trim())}>Track</button>
-          </form>
         )}
         <p className="xs muted">Approval needs a different person from the drafter. After publishing, <Link to="/editions/$editionId" params={{ editionId }}>registration can be opened</Link>.</p>
       </div>

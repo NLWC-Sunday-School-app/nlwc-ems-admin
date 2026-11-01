@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, Outlet } from "@tanstack/react-router";
 import { useSession } from "../lib/session";
 import { ThemeToggle } from "./ThemeToggle";
@@ -18,7 +18,7 @@ const NAV: { heading: string; items: NavItem[] }[] = [
 ];
 
 export function Shell() {
-  const { access, can, editions, editionId, setEditionId, editionsRestricted, signOut } = useSession();
+  const { access, can, editions, editionId, setEditionId, signOut } = useSession();
 
   // The admin grid hangs off this class on the mount node (see app.css).
   useEffect(() => {
@@ -51,16 +51,14 @@ export function Shell() {
 
       <div className="main">
         <header className="topbar">
-          {editions.length === 0 && editionsRestricted ? <EditionIdEntry current={editionId} onSet={setEditionId} /> : (
-            <div className="scope" role="group" aria-label="Edition">
-              <span className="dot" aria-hidden="true" />
-              <label htmlFor="edition-switch" className="sr">Edition</label>
-              <select id="edition-switch" className="select" style={{ border: 0, minHeight: 28, background: "transparent", fontWeight: 600 }} value={editionId ?? ""} onChange={(e) => setEditionId(e.target.value || null)} disabled={editions.length === 0}>
-                {editions.length === 0 && <option value="">No editions yet</option>}
-                {editions.filter((e) => e.id).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </select>
-            </div>
-          )}
+          <div className="scope" role="group" aria-label="Edition">
+            <span className="dot" aria-hidden="true" />
+            <label htmlFor="edition-switch" className="sr">Edition</label>
+            <select id="edition-switch" className="select" style={{ border: 0, minHeight: 28, background: "transparent", fontWeight: 600 }} value={editionId ?? ""} onChange={(e) => setEditionId(e.target.value || null)} disabled={editions.length === 0}>
+              {editions.length === 0 && <option value="">No editions yet</option>}
+              {editions.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select>
+          </div>
           <span style={{ marginLeft: "auto" }} className="row">
             <ThemeToggle />
             <span className="badge b-ok" title="Staff permissions are active on this session">MFA verified</span>
@@ -74,16 +72,3 @@ export function Shell() {
   );
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Roles without config:view cannot list editions, so they paste the id they were given. Edition-scoped grants then apply. */
-function EditionIdEntry({ current, onSet }: { current: string | null; onSet: (id: string | null) => void }) {
-  const [value, setValue] = useState(current ?? "");
-  return (
-    <form className="row" onSubmit={(e) => { e.preventDefault(); if (UUID.test(value.trim())) onSet(value.trim()); }} aria-label="Edition">
-      <label htmlFor="edition-id" className="sr">Edition id</label>
-      <input id="edition-id" className="input mono" style={{ minHeight: 38, width: 300 }} placeholder="Paste an edition id" value={value} onChange={(e) => setValue(e.target.value)} />
-      <button className="btn btn-secondary btn-sm" disabled={!UUID.test(value.trim()) || value.trim() === current}>{current ? "Switch" : "Use"}</button>
-    </form>
-  );
-}

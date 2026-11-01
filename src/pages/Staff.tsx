@@ -1,9 +1,9 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 import { formatDateTime, shortId } from "../lib/format";
 import { useSession } from "../lib/session";
-import type { Pager, Role, RoleGrant } from "../lib/types";
+import type { Pager, Role, RoleGrant, StaffLookup } from "../lib/types";
 import { Empty, ErrorAlert, Forbidden, Loading, Pager as PagerBar, ReasonDialog } from "../components/ui";
 
 const PAGE = 25;
@@ -109,26 +109,40 @@ function Grants() {
 function GrantForm({ roles, defaultEdition }: { roles: Role[]; defaultEdition: string | null }) {
   const { editions } = useSession();
   const qc = useQueryClient();
-  const [f, setF] = useState({ accountId: "", role: "", scope: "church", reason: "", expiresAt: "" });
-  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }));
+  const [f, setF] = useState({ email: "", role: "", scope: "church", reason: "", expiresAt: "" });
+  const [found, setFound] = useState<StaffLookup | null>(null);
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => {
+    setF((s) => ({ ...s, [k]: e.target.value }));
+    if (k === "email") setFound(null);   // a changed email is a different person
+  };
   const [done, setDone] = useState(false);
+
+  const lookup = useMutation({
+    mutationFn: () => api.get<StaffLookup>("rolegrant/lookup", { email: f.email.trim() }),
+    onSuccess: setFound,
+    onError: () => setFound(null),
+  });
+  const notFound = lookup.error instanceof ApiError && lookup.error.code === "account_not_found";
 
   const grant = useMutation({
     mutationFn: () => api.post("rolegrant", {
-      accountId: f.accountId.trim(), role: f.role, editionId: f.scope === "church" ? null : f.scope === "current" ? defaultEdition : f.scope,
+      accountId: found!.accountId, role: f.role, editionId: f.scope === "church" ? null : f.scope === "current" ? defaultEdition : f.scope,
       reason: f.reason.trim(), expiresAt: f.expiresAt ? new Date(f.expiresAt).toISOString() : null,
     }),
-    onSuccess: async () => { setDone(true); setF((s) => ({ ...s, accountId: "", reason: "", expiresAt: "" })); await qc.invalidateQueries({ queryKey: ["grants"] }); },
+    onSuccess: async () => { setDone(true); setF((s) => ({ ...s, email: "", reason: "", expiresAt: "" })); setFound(null); await qc.invalidateQueries({ queryKey: ["grants"] }); },
   });
 
-  const valid = /^[0-9a-f-]{36}$/i.test(f.accountId.trim()) && f.role && f.reason.trim();
+  const valid = !!found && f.role && f.reason.trim();
   const submit = (e: FormEvent) => { e.preventDefault(); setDone(false); if (valid) grant.mutate(); };
 
   return (
     <form className="card stack-3" onSubmit={submit} aria-labelledby="grant-h">
       <div className="card-h"><h3 id="grant-h">Grant a role</h3></div>
       <div className="form-grid">
-        <div className="field"><label htmlFor="g-acc">Account id</label><input id="g-acc" className="input mono" required value={f.accountId} onChange={set("accountId")} placeholder="xxxxxxxx-xxxx-…" aria-describedby="g-acc-h" /><span id="g-acc-h" className="hint xs muted">The API has no staff directory yet, so paste the account id.</span></div>
+        <div className="field"><label htmlFor="g-email">Their email</label>
+          <div className="row"><input id="g-email" className="input" type="email" required value={f.email} onChange={set("email")} aria-describedby="g-email-h" />
+            <button type="button" className="btn btn-secondary btn-sm" disabled={!f.email.trim() || lookup.isPending} onClick={() => lookup.mutate()}>{lookup.isPending ? "Finding…" : "Find"}</button></div>
+          <span id="g-email-h" className="hint xs" role="status">{found ? <b>{found.givenName} {found.familyName}</b> : notFound ? "No account has that email. They need to sign up first." : <span className="muted">They must already have an account.</span>}</span></div>
         <div className="field"><label htmlFor="g-role">Role</label><select id="g-role" className="select" required value={f.role} onChange={set("role")}><option value="">Choose…</option>{roles.map((r) => <option key={r.id} value={r.key}>{r.name}</option>)}</select></div>
         <div className="field"><label htmlFor="g-scope">Where</label><select id="g-scope" className="select" value={f.scope} onChange={set("scope")}><option value="church">Church-wide</option>{editions.filter((e) => e.id).map((e) => <option key={e.id} value={e.id}>{e.name} only</option>)}</select></div>
         <div className="field"><label htmlFor="g-exp">Expires <span className="muted">(optional)</span></label><input id="g-exp" className="input" type="datetime-local" value={f.expiresAt} onChange={set("expiresAt")} /></div>
@@ -136,7 +150,7 @@ function GrantForm({ roles, defaultEdition }: { roles: Role[]; defaultEdition: s
       <div className="field"><label htmlFor="g-why">Reason <span className="muted">(required, recorded in the audit log)</span></label><input id="g-why" className="input" required maxLength={500} value={f.reason} onChange={set("reason")} /></div>
       <ErrorAlert error={grant.error} />
       {done && !grant.error && <div className="alert ok" role="status"><div>Role granted.</div></div>}
-      <div className="row"><button className="btn btn-primary" disabled={!valid || grant.isPending}>{grant.isPending ? "Granting…" : "Grant role"}</button>
+      <div className="row"><button className="btn btn-primary" disabled={!valid || grant.isPending} title={!found ? "Find the person by email first" : undefined}>{grant.isPending ? "Granting…" : "Grant role"}</button>
         <span className="xs muted">Staff permissions only take effect once that person has set up MFA.</span></div>
     </form>
   );

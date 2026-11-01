@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import QRCode from "qrcode";
 import { ApiError, api } from "../lib/api";
 import { useSession } from "../lib/session";
@@ -51,8 +51,9 @@ export function SignIn() {
 
 /** Staff permissions only count on an MFA-verified session, so nothing else loads until this passes. */
 export function MfaGate() {
-  const { refreshMe, signOut } = useSession();
-  const [mode, setMode] = useState<"code" | "enroll">("code");
+  const { me, refreshMe, signOut } = useSession();
+  // The API says whether an authenticator already exists. If it does, only a code is ever asked for: setting up again would replace it.
+  const enrolled = me?.mfaEnrolled ?? false;
   const [uri, setUri] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [code, setCode] = useState("");
@@ -72,7 +73,6 @@ export function MfaGate() {
     try {
       const r = await api.post<{ otpauthUri: string }>("auth/mfa/enroll");
       setUri(r.otpauthUri);
-      setMode("enroll");
       setCode("");
     } catch (err) {
       setError(err);
@@ -80,6 +80,13 @@ export function MfaGate() {
       setBusy(false);
     }
   };
+
+  const started = useRef(false);
+  useEffect(() => {
+    if (enrolled || started.current) return;
+    started.current = true;
+    void startEnroll();
+  }, [enrolled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const verify = async (e: FormEvent) => {
     e.preventDefault();
@@ -102,9 +109,10 @@ export function MfaGate() {
     <main className="auth-wrap">
       <form className="card auth-card" onSubmit={verify} aria-labelledby="mfa-h">
         <div><span className="badge b-warn">Step 2 of 2</span></div>
-        <h1 id="mfa-h">{mode === "enroll" ? "Set up your authenticator" : "Enter your authenticator code"}</h1>
+        <h1 id="mfa-h">{!enrolled ? "Set up your authenticator" : "Enter your authenticator code"}</h1>
 
-        {mode === "enroll" && uri ? (
+        {!enrolled && !uri && !error ? <p className="sm muted" role="status">Preparing your setup key…</p> : null}
+        {!enrolled && uri ? (
           <>
             <p className="sm muted">Scan this with an authenticator app (Google Authenticator, 1Password, Authy), or type the key in by hand. Then enter the 6-digit code it shows.</p>
             <div className="qr-box">
@@ -126,14 +134,10 @@ export function MfaGate() {
         <button className="btn btn-primary btn-block" disabled={busy || code.length !== 6}>{busy ? "Checking…" : "Verify and continue"}</button>
 
         <div className="row between sm">
-          {mode === "code" ? (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={startEnroll} disabled={busy}>First time? Set up an authenticator</button>
-          ) : (
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setMode("code"); setUri(null); setError(null); }}>I already have one</button>
-          )}
+          {!enrolled && !uri && error ? <button type="button" className="btn btn-ghost btn-sm" onClick={startEnroll} disabled={busy}>Try again</button> : <span />}
           <button type="button" className="btn btn-ghost btn-sm" onClick={() => void signOut()}>Sign out</button>
         </div>
-        {mode === "code" && <p className="xs muted">Already set up? Don’t press “first time”: it replaces the key your app uses today.</p>}
+        {enrolled && <p className="xs muted">Lost your device? Ask an administrator to reset your authenticator.</p>}
       </form>
     </main>
   );

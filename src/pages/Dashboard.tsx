@@ -1,9 +1,9 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { api } from "../lib/api";
 import { CAPABILITY_LABEL, STAGES, STAGE_LABEL, formatDateRange, stageBadge } from "../lib/format";
 import { useSession } from "../lib/session";
-import type { Pager, RegistrationState, StaffRegistration } from "../lib/types";
+import type { Edition, Pager, RegistrationState, StaffRegistration } from "../lib/types";
 import { Empty, Forbidden } from "../components/ui";
 
 const COUNTED: { state: RegistrationState; label: string; hint: string }[] = [
@@ -15,8 +15,11 @@ const COUNTED: { state: RegistrationState; label: string; hint: string }[] = [
 ];
 
 export function Dashboard() {
-  const { edition, editionId, can, editions, editionsRestricted } = useSession();
+  const { edition: summary, editionId, can, editions } = useSession();
   const canView = can("registrations:view");
+  // The full edition (capabilities, timezone) needs config:view; other roles still get the header from the summary.
+  const detail = useQuery({ queryKey: ["edition", editionId], enabled: !!editionId && can("config:view"), retry: false, queryFn: () => api.get<Edition>(`edition/${editionId}`) });
+  const edition = detail.data;
 
   // One cheap request per state: the queue already returns an exact `count`, so no separate stats endpoint is needed yet.
   const counts = useQueries({
@@ -27,13 +30,22 @@ export function Dashboard() {
     })),
   });
 
-  if (!edition) {
+  if (!summary) {
     return (
       <section>
         <div className="page-h"><div><h1>Dashboard</h1></div></div>
-        {editionsRestricted ? <Forbidden need="config:view" /> : editions.length === 0
-          ? <Empty title="No editions yet">Create the first edition under <Link to="/editions">Event editions</Link>.</Empty>
+        {editions.length === 0
+          ? <Empty title="No editions yet">{can("config:edit", false) ? <>Create the first edition under <Link to="/editions">Event editions</Link>.</> : "You have no editions yet."}</Empty>
           : <Empty title="Choose an edition">Use the switcher at the top.</Empty>}
+      </section>
+    );
+  }
+  if (!edition) {
+    return (
+      <section>
+        <div className="page-h"><div><h1>{summary.name}</h1></div></div>
+        {can("config:view") ? <p className="muted">Loading…</p> : <Forbidden need="config:view" />}
+        {canView && <Counts counts={counts} />}
       </section>
     );
   }
@@ -48,17 +60,7 @@ export function Dashboard() {
         <span className={`badge ${stageBadge(edition.stage)}`}>{edition.stage ? STAGE_LABEL[edition.stage] : "Unknown stage"}</span>
       </div>
 
-      {!canView ? <Forbidden need="registrations:view" /> : (
-        <div className="grid g4" aria-label="Registrations by state">
-          {COUNTED.map((c, i) => (
-            <div className="kpi" key={c.state}>
-              <div className="l">{c.label}</div>
-              <div className="v">{counts[i].isLoading ? "…" : counts[i].isError ? "—" : counts[i].data?.count ?? 0}</div>
-              <div className="s">{counts[i].isError ? "Could not load" : c.hint}</div>
-            </div>
-          ))}
-        </div>
-      )}
+      {!canView ? <Forbidden need="registrations:view" /> : <Counts counts={counts} />}
 
       <div className="grid g2" style={{ marginTop: "var(--space-4)" }}>
         <div className="card">
@@ -77,5 +79,19 @@ export function Dashboard() {
         Numbers come straight from the registrations queue. Revenue, capacity and check-in figures appear here once those modules exist.
       </p>
     </section>
+  );
+}
+
+function Counts({ counts }: { counts: UseQueryResult<Pager<StaffRegistration>>[] }) {
+  return (
+    <div className="grid g4" aria-label="Registrations by state">
+      {COUNTED.map((c, i) => (
+        <div className="kpi" key={c.state}>
+          <div className="l">{c.label}</div>
+          <div className="v">{counts[i].isLoading ? "…" : counts[i].isError ? "—" : counts[i].data?.count ?? 0}</div>
+          <div className="s">{counts[i].isError ? "Could not load" : c.hint}</div>
+        </div>
+      ))}
+    </div>
   );
 }

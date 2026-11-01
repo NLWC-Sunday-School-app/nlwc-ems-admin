@@ -14,7 +14,7 @@ const timeOrNull = (v: string) => (v ? (v.length === 5 ? `${v}:00` : v) : null);
 const timeValue = (v: string | null) => (v ? v.slice(0, 5) : "");
 
 export function EditionsPage() {
-  const { can, setEditionId, editionsRestricted } = useSession();
+  const { can, setEditionId } = useSession();
   const [creating, setCreating] = useState(false);
   const list = useQuery({ queryKey: ["edition-list"], queryFn: () => api.get<Edition[]>("edition"), retry: false });
   const canEdit = can("config:edit", false);
@@ -49,7 +49,6 @@ export function EditionsPage() {
           </table>
         )}
       </div>
-      {editionsRestricted && <p className="xs muted">Only public editions are listed for your role.</p>}
     </section>
   );
 }
@@ -67,6 +66,7 @@ function NewEdition({ onDone }: { onDone: (id: string) => void }) {
     mutationFn: (input: CreateEditionInput) => api.post<Edition>("edition", input),
     onSuccess: async (edition) => {
       await qc.invalidateQueries({ queryKey: ["editions"] });
+    await qc.invalidateQueries({ queryKey: ["my-editions"] });
       await qc.invalidateQueries({ queryKey: ["edition-list"] });
       onDone(edition.id);
       void navigate({ to: "/editions/$editionId", params: { editionId: edition.id } });
@@ -123,6 +123,7 @@ export function EditionDetail() {
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["edition", editionId] });
     await qc.invalidateQueries({ queryKey: ["editions"] });
+      await qc.invalidateQueries({ queryKey: ["my-editions"] });
     await qc.invalidateQueries({ queryKey: ["edition-list"] });
   };
 
