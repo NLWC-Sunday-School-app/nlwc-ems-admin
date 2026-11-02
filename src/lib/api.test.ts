@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, queryString, readCookie, request, setUnauthenticatedHandler } from "./api";
+import { ApiError, download, queryString, readCookie, request, setUnauthenticatedHandler } from "./api";
 
 const reply = (status: number, body: unknown, raw = false) =>
   vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(raw ? (body as string) : JSON.stringify(body), { status }));
@@ -79,5 +79,19 @@ describe("request", () => {
 
   it("resolves undefined for a success with no body", async () => {
     await expect(request("POST", "x", {}, reply(200, "", true))).resolves.toBeUndefined();
+  });
+});
+
+describe("download", () => {
+  it("raises the API's reason when the export is refused, instead of saving an error page", async () => {
+    const f = reply(400, { success: false, message: "Say why you are exporting this list.", code: "reason_required", data: null });
+    await expect(download("admin/registration/export", { editionId: "e1" }, f)).rejects.toMatchObject({ status: 400, code: "reason_required" });
+    expect(f).toHaveBeenCalledWith("/api/v1/admin/registration/export?editionId=e1", expect.objectContaining({ credentials: "same-origin" }));
+  });
+  it("tells the app to sign in again on a 401", async () => {
+    const handler = vi.fn();
+    setUnauthenticatedHandler(handler);
+    await expect(download("x", undefined, reply(401, { success: false, message: "no", code: "unauthenticated", data: null }))).rejects.toBeInstanceOf(ApiError);
+    expect(handler).toHaveBeenCalledTimes(1);
   });
 });

@@ -6,6 +6,8 @@ import { Shell } from "./components/Shell";
 import { Dashboard } from "./pages/Dashboard";
 import { EditionDetail, EditionsPage } from "./pages/Editions";
 import { PricingPage } from "./pages/Pricing";
+import { CampReviewPage } from "./pages/CampReview";
+import { PeoplePage } from "./pages/People";
 import { RegistrationsPage } from "./pages/Registrations";
 import { StaffPage } from "./pages/Staff";
 import { AuditPage } from "./pages/Audit";
@@ -28,10 +30,12 @@ const editions = createRoute({ getParentRoute: () => root, path: "/editions", co
 const editionDetail = createRoute({ getParentRoute: () => root, path: "/editions/$editionId", component: EditionDetail });
 const pricing = createRoute({ getParentRoute: () => root, path: "/pricing", component: PricingPage });
 const registrations = createRoute({ getParentRoute: () => root, path: "/registrations", component: RegistrationsPage });
+const people = createRoute({ getParentRoute: () => root, path: "/people", component: PeoplePage });
+const camp = createRoute({ getParentRoute: () => root, path: "/camp", component: CampReviewPage });
 const staff = createRoute({ getParentRoute: () => root, path: "/staff", component: StaffPage });
 const audit = createRoute({ getParentRoute: () => root, path: "/audit", component: AuditPage });
 
-const routeTree = root.addChildren([dashboard, editions, editionDetail, pricing, registrations, staff, audit]);
+const routeTree = root.addChildren([dashboard, editions, editionDetail, pricing, registrations, camp, people, staff, audit]);
 
 const router = createRouter({ routeTree });
 declare module "@tanstack/react-router" { interface Register { router: typeof router } }

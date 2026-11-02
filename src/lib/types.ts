@@ -106,6 +106,33 @@ export type StaffRegistration = {
   dateCreated: string;
 };
 
+export type StaffRegistrationDetail = {
+  id: string;
+  reference: string;
+  editionId: string;
+  state: RegistrationState;
+  participationMode: ParticipationMode;
+  ageBand: string | null;
+  ageOnReferenceDate: number | null;
+  dateCreated: string;
+  hasHealthFlags: boolean | null;
+  cancellable: boolean;
+  person: { personId: string; givenName: string; familyName: string; dateOfBirth: string | null; gender: string | null; country: string | null; city: string | null };
+  actors: { personId: string; name: string; role: string }[];
+  consents: { kind: string; accepted: boolean; documentVersion: number; at: string }[];
+  emergencyContact: { fullName: string; relationship: string } | null;
+  history: { from: RegistrationState | null; to: RegistrationState; actor: string | null; reason: string | null; at: string }[];
+};
+
+export type StaffDashboard = {
+  total: number;
+  byState: Partial<Record<RegistrationState, number>>;
+  byMode: Partial<Record<ParticipationMode, number>>;
+  byAgeBand: Record<string, number>;
+  needsAction: number;
+  staleDrafts: number;
+};
+
 export type Health = { none: boolean; conditions: string[]; allergies: string | null; notes: string | null } | null;
 
 export type RolePermission = { resource: string; level: string };
@@ -137,3 +164,20 @@ export type AuditEvent = {
   detail: string;
   hash: string;
 };
+
+export type PersonSummary = { id: string; givenName: string; familyName: string; dateOfBirth: string | null; city: string | null; country: string | null; registrations: number };
+export type PersonDetail = {
+  person: PersonSummary;
+  gender: string | null;
+  relations: { relation: "Spouse" | "Guardian" | "Dependant"; personId: string; name: string }[];
+  registrations: { id: string; reference: string; editionName: string; state: RegistrationState; mode: ParticipationMode }[];
+};
+export type DuplicatePair = { a: PersonSummary; b: PersonSummary };
+
+export type CampDecisionKind = "Approved" | "Waitlisted" | "Declined";
+export type CampQueueItem = {
+  registrationId: string; reference: string; personId: string; givenName: string; familyName: string; age: number | null;
+  state: RegistrationState; guardianConsentGiven: boolean; hasHealthFlags: boolean | null;
+  decision: CampDecisionKind | null; decisionReason: string | null; decidedAt: string | null;
+};
+export type CampQueue = { capacity: number | null; approved: number; rows: CampQueueItem[] };

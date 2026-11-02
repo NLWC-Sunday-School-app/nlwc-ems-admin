@@ -7,7 +7,8 @@
 
 .auth-wrap { min-height: 100vh; display: grid; place-items: center; padding: var(--space-6); background: var(--surface-sunken); }
 .auth-card { width: min(440px, 100%); display: grid; gap: var(--space-4); }
-.auth-card img { height: 44px; justify-self: start; }
+.auth-card > img { height: 44px; justify-self: start; }
+.qr-box img { display: block; width: 200px; height: 200px; image-rendering: pixelated; }
 .qr-box { display: grid; justify-items: center; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: #fff; }
 .code-input { font-family: var(--font-mono); font-size: var(--text-2xl, 1.5rem); letter-spacing: .4em; text-align: center; }
 .stack-2 { display: grid; gap: var(--space-2); }
@@ -22,3 +23,6 @@
 .skip { position: absolute; left: -9999px; } .skip:focus { left: 8px; top: 8px; z-index: 300; background: var(--surface); padding: 8px 12px; }
 .sensitive { border: 1px solid var(--border-strong); border-radius: var(--radius-md); padding: var(--space-4); background: var(--surface-sunken); display: grid; gap: var(--space-3); }
 pre.detail { white-space: pre-wrap; word-break: break-all; font-family: var(--font-mono); font-size: var(--text-xs); margin: 0; }
+
+.link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--primary); text-decoration: underline; cursor: pointer; }
+.link-btn:hover { text-decoration-thickness: 2px; }

@@ -70,6 +70,29 @@ export async function request<T>(method: string, path: string, body?: unknown, f
   return (envelope?.data ?? (undefined as T)) as T;
 }
 
+/** Saves a file the API returns (a CSV export). Same cookies and error handling as `request`. */
+export async function download(path: string, params?: Record<string, string | number | boolean | null | undefined>, fetcher: typeof fetch = fetch): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetcher(`/api/v1/${path}${queryString(params)}`, { credentials: "same-origin" });
+  } catch {
+    throw new ApiError(0, "network", "Could not reach the server. Check your connection and try again.");
+  }
+  if (!response.ok) {
+    let code: string | null = null;
+    let message = `Request failed (${response.status}).`;
+    try { const e = (await response.json()) as Envelope<unknown>; code = e.code ?? null; message = e.message ?? message; } catch { /* not JSON */ }
+    if (response.status === 401 && code === "unauthenticated") onUnauthenticated?.();
+    throw new ApiError(response.status, code, message);
+  }
+  const name = /filename="?([^";]+)"?/.exec(response.headers.get("Content-Disposition") ?? "")?.[1] ?? "export.csv";
+  const url = URL.createObjectURL(await response.blob());
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const api = {
   get: <T>(path: string, params?: Record<string, string | number | boolean | null | undefined>) => request<T>("GET", path + queryString(params)),
   post: <T = void>(path: string, body: unknown = {}) => request<T>("POST", path, body),

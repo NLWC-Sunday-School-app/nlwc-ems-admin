@@ -1,9 +1,10 @@
-import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { Fragment } from "react";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { api } from "../lib/api";
-import { CAPABILITY_LABEL, STAGES, STAGE_LABEL, formatDateRange, stageBadge } from "../lib/format";
+import { CAPABILITY_LABEL, MODE_LABEL, STAGES, STAGE_LABEL, formatDateRange, stageBadge } from "../lib/format";
 import { useSession } from "../lib/session";
-import type { Edition, Pager, RegistrationState, StaffRegistration } from "../lib/types";
+import type { Edition, ParticipationMode, RegistrationState, StaffDashboard } from "../lib/types";
 import { Empty, Forbidden } from "../components/ui";
 
 const COUNTED: { state: RegistrationState; label: string; hint: string }[] = [
@@ -21,13 +22,10 @@ export function Dashboard() {
   const detail = useQuery({ queryKey: ["edition", editionId], enabled: !!editionId && can("config:view"), retry: false, queryFn: () => api.get<Edition>(`edition/${editionId}`) });
   const edition = detail.data;
 
-  // One cheap request per state: the queue already returns an exact `count`, so no separate stats endpoint is needed yet.
-  const counts = useQueries({
-    queries: COUNTED.map((c) => ({
-      queryKey: ["reg-count", editionId, c.state],
-      enabled: !!editionId && canView,
-      queryFn: () => api.get<Pager<StaffRegistration>>("admin/registration", { editionId, state: c.state, max: 1 }),
-    })),
+  const counts = useQuery({
+    queryKey: ["dashboard", editionId],
+    enabled: !!editionId && canView,
+    queryFn: () => api.get<StaffDashboard>("admin/registration/dashboard", { editionId }),
   });
 
   if (!summary) {
@@ -76,22 +74,52 @@ export function Dashboard() {
         </div>
       </div>
       <p className="xs muted" style={{ marginTop: "var(--space-4)" }}>
-        Numbers come straight from the registrations queue. Revenue, capacity and check-in figures appear here once those modules exist.
+        Revenue, capacity and check-in figures appear here once those modules exist.
       </p>
     </section>
   );
 }
 
-function Counts({ counts }: { counts: UseQueryResult<Pager<StaffRegistration>>[] }) {
+const AGE_LABEL: Record<string, string> = { "under-3": "Under 3", "3-9": "3 to 9", "10-16": "10 to 16", "17+": "17 and over" };
+
+function Counts({ counts }: { counts: UseQueryResult<StaffDashboard> }) {
+  const d = counts.data;
+  const value = (n: number | undefined) => (counts.isLoading ? "…" : counts.isError ? "—" : n ?? 0);
   return (
-    <div className="grid g4" aria-label="Registrations by state">
-      {COUNTED.map((c, i) => (
-        <div className="kpi" key={c.state}>
-          <div className="l">{c.label}</div>
-          <div className="v">{counts[i].isLoading ? "…" : counts[i].isError ? "—" : counts[i].data?.count ?? 0}</div>
-          <div className="s">{counts[i].isError ? "Could not load" : c.hint}</div>
+    <>
+      <div className="grid g4" aria-label="Registrations by state">
+        {COUNTED.map((c) => (
+          <div className="kpi" key={c.state}>
+            <div className="l">{c.label}</div>
+            <div className="v">{value(d?.byState[c.state])}</div>
+            <div className="s">{counts.isError ? "Could not load" : c.hint}</div>
+          </div>
+        ))}
+      </div>
+      {d && (
+        <div className="grid g3" style={{ marginTop: "var(--space-4)" }}>
+          <div className="card">
+            <div className="card-h"><h3>Needs attention</h3></div>
+            {d.needsAction === 0 && d.staleDrafts === 0 ? <p className="muted sm">Nothing is waiting on you.</p> : (
+              <ul className="sm" style={{ margin: 0, paddingLeft: "1.1rem" }}>
+                {d.needsAction > 0 && <li><b>{d.needsAction}</b> waiting on the family. <Link to="/registrations">Open the queue</Link></li>}
+                {d.staleDrafts > 0 && <li><b>{d.staleDrafts}</b> {d.staleDrafts === 1 ? "draft" : "drafts"} untouched for over a week</li>}
+              </ul>
+            )}
+          </div>
+          <div className="card">
+            <div className="card-h"><h3>How people attend</h3></div>
+            <dl className="kv">{(Object.keys(MODE_LABEL) as ParticipationMode[]).map((m) => <Fragment key={m}><dt>{MODE_LABEL[m]}</dt><dd>{d.byMode[m] ?? 0}</dd></Fragment>)}</dl>
+          </div>
+          <div className="card">
+            <div className="card-h"><h3>Age bands</h3></div>
+            {Object.keys(d.byAgeBand).length === 0 ? <p className="muted sm">No registrations yet.</p> : (
+              <dl className="kv">{Object.keys(AGE_LABEL).filter((b) => d.byAgeBand[b]).map((b) => <Fragment key={b}><dt>{AGE_LABEL[b]}</dt><dd>{d.byAgeBand[b]}</dd></Fragment>)}</dl>
+            )}
+          </div>
         </div>
-      ))}
-    </div>
+      )}
+      <p className="xs muted" style={{ marginTop: "var(--space-3)" }}>Cancelled, rejected and expired registrations are left out of the attendance and age counts.</p>
+    </>
   );
 }

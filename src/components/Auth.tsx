@@ -63,7 +63,7 @@ export function MfaGate() {
   useEffect(() => {
     if (!uri) { setQr(null); return; }
     let alive = true;
-    QRCode.toDataURL(uri, { margin: 1, width: 200 }).then((url) => alive && setQr(url)).catch(() => alive && setQr(null));
+    QRCode.toDataURL(uri, { margin: 1, width: 400 }).then((url) => alive && setQr(url)).catch(() => alive && setQr(null));
     return () => { alive = false; };
   }, [uri]);
 

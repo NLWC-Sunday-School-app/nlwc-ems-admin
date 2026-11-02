@@ -10,6 +10,8 @@ const NAV: { heading: string; items: NavItem[] }[] = [
     { to: "/editions", label: "Event editions", need: "config:view" },
     { to: "/pricing", label: "Pricing & rate plans", need: "pricing:draft|pricing:approve" },
     { to: "/registrations", label: "Registrations", need: "registrations:view" },
+    { to: "/camp", label: "Camp review", need: "registrations:view" },
+    { to: "/people", label: "People", need: "people:view" },
   ] },
   { heading: "Governance", items: [
     { to: "/staff", label: "Staff & roles", need: "staff:view" },

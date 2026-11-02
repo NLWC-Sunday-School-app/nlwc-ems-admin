@@ -35,10 +35,12 @@ unchanged. The API must list `http://localhost:3001` under `Cors:AllowedOrigins`
 | Screen | Needs | Notes |
 |---|---|---|
 | Sign-in and MFA | none | the gate for everything below |
-| Dashboard | `registrations:view` | registration counts by state, lifecycle, capabilities on |
+| Dashboard | `registrations:view` | registration counts by state, how people attend, age bands, what needs attention, lifecycle, capabilities on |
 | Event editions | `config:view` / `config:edit` | create, edit settings, capability switches and stage moves (each asks for a reason) |
 | Pricing & rate plans | `pricing:draft` / `pricing:approve` | draft rate versions, approve (a different person), publish |
-| Registrations | `registrations:view` | queue by state; a drawer with a deliberate, logged **Reveal health** (`health:view`) |
+| Registrations | `registrations:view` | searchable queue (name or reference; state, mode and age-band filters); an audited CSV **Export** (reason required, never health answers); a drawer with people, permissions, emergency contact and history; **Cancel registration** with a reason (`registrations:edit`); a deliberate, logged **Reveal health** (`health:view`) |
+| Camp review | `registrations:view` (decide: `registrations:edit`) | camp requests with a person's decision (Approve, Waitlist, Decline, each with a reason); approvals need a camp capacity and room in it |
+| People | `people:view` (edit: `people:edit`) | name search, family and registrations, possible duplicates ("not the same person", never auto-merged), staff pairing of adult spouses |
 | Staff & roles | `staff:view` / `staff:edit` | role matrix, grants, grant and revoke with a reason |
 | Audit log | `audit:view` | paged events, detail, **Verify chain** |
 
