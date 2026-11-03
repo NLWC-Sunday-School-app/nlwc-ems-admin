@@ -63,7 +63,7 @@ function NewEdition({ onDone }: { onDone: (id: string) => void }) {
   const navigate = useNavigate();
   const [f, setF] = useState({
     templateCode: "BB", name: "", code: "", slug: "", startsOn: "", endsOn: "", venueName: "", venueAddress: "",
-    maxAge: "", campMinAge: "", campMaxAge: "", campCapacity: "", pickupStart: "", pickupEnd: "",
+    minAge: "", maxAge: "", campMinAge: "", campMaxAge: "", campCapacity: "", pickupStart: "", pickupEnd: "",
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }));
   // The web address fills itself in from the name until someone edits it; whatever is typed or pasted is cleaned into a valid one.
@@ -87,7 +87,7 @@ function NewEdition({ onDone }: { onDone: (id: string) => void }) {
     create.mutate({
       templateCode: f.templateCode, name: f.name.trim(), code: f.code.trim().toUpperCase(), slug: slugify(f.slug).replace(/-+$/, ""), startsOn: f.startsOn, endsOn: f.endsOn,
       venueName: f.venueName.trim() || undefined, venueAddress: f.venueAddress.trim() || undefined,
-      maxAge: intOrNull(f.maxAge), campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
+      minAge: intOrNull(f.minAge), maxAge: intOrNull(f.maxAge), campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
       pickupWindowStart: timeOrNull(f.pickupStart), pickupWindowEnd: timeOrNull(f.pickupEnd),
     });
   };
@@ -106,6 +106,7 @@ function NewEdition({ onDone }: { onDone: (id: string) => void }) {
         <div className="field"><label htmlFor="ne-b">Last day</label><input id="ne-b" className="input" type="date" required min={f.startsOn} value={f.endsOn} onChange={set("endsOn")} /></div>
         <div className="field"><label htmlFor="ne-v">Venue</label><input id="ne-v" className="input" maxLength={200} value={f.venueName} onChange={set("venueName")} /></div>
         <div className="field"><label htmlFor="ne-va">Venue address</label><input id="ne-va" className="input" maxLength={500} value={f.venueAddress} onChange={set("venueAddress")} /></div>
+        <div className="field"><label htmlFor="ne-min">Minimum age <span className="muted">anyone younger cannot register</span></label><input id="ne-min" className="input" type="number" min={0} max={120} value={f.minAge} onChange={set("minAge")} /></div>
         <div className="field"><label htmlFor="ne-max">Maximum age <span className="muted">anyone older cannot register</span></label><input id="ne-max" className="input" type="number" min={0} max={120} value={f.maxAge} onChange={set("maxAge")} /></div>
         <div className="field"><label htmlFor="ne-cmin">Camp minimum age</label><input id="ne-cmin" className="input" type="number" min={0} max={120} value={f.campMinAge} onChange={set("campMinAge")} /></div>
         <div className="field"><label htmlFor="ne-cmax">Camp maximum age</label><input id="ne-cmax" className="input" type="number" min={0} max={120} value={f.campMaxAge} onChange={set("campMaxAge")} /></div>
@@ -211,7 +212,7 @@ export function EditionDetail() {
 
 function EditionForm({ edition, canEdit, onSaved, onUse }: { edition: Edition; canEdit: boolean; onSaved: () => Promise<void>; onUse: () => void }) {
   const [f, setF] = useState({
-    name: edition.name, maxAge: edition.maxAge?.toString() ?? "", campMinAge: edition.campMinAge?.toString() ?? "", campMaxAge: edition.campMaxAge?.toString() ?? "", campCapacity: edition.campCapacity?.toString() ?? "",
+    name: edition.name, minAge: edition.minAge?.toString() ?? "", maxAge: edition.maxAge?.toString() ?? "", campMinAge: edition.campMinAge?.toString() ?? "", campMaxAge: edition.campMaxAge?.toString() ?? "", campCapacity: edition.campCapacity?.toString() ?? "",
     pickupStart: timeValue(edition.pickupWindowStart), pickupEnd: timeValue(edition.pickupWindowEnd),
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }));
@@ -226,7 +227,7 @@ function EditionForm({ edition, canEdit, onSaved, onUse }: { edition: Edition; c
     ev.preventDefault();
     setSaved(false);
     save.mutate({
-      name: f.name.trim(), maxAge: intOrNull(f.maxAge), campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
+      name: f.name.trim(), minAge: intOrNull(f.minAge), maxAge: intOrNull(f.maxAge), campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
       pickupWindowStart: timeOrNull(f.pickupStart), pickupWindowEnd: timeOrNull(f.pickupEnd),
     });
   };
@@ -249,6 +250,7 @@ function EditionForm({ edition, canEdit, onSaved, onUse }: { edition: Edition; c
         <div className="card-h"><h3 id="ed-form">Settings</h3></div>
         <div className="field"><label htmlFor="ef-n">Name</label><input id="ef-n" className="input" required maxLength={200} value={f.name} onChange={set("name")} disabled={!canEdit} /></div>
         <div className="form-grid">
+          <div className="field"><label htmlFor="ef-min">Minimum age <span className="muted">anyone younger cannot register</span></label><input id="ef-min" className="input" type="number" min={0} max={120} value={f.minAge} onChange={set("minAge")} disabled={!canEdit} /></div>
           <div className="field"><label htmlFor="ef-max">Maximum age <span className="muted">anyone older cannot register</span></label><input id="ef-max" className="input" type="number" min={0} max={120} value={f.maxAge} onChange={set("maxAge")} disabled={!canEdit} /></div>
           <div className="field"><label htmlFor="ef-a">Camp minimum age</label><input id="ef-a" className="input" type="number" min={0} max={120} value={f.campMinAge} onChange={set("campMinAge")} disabled={!canEdit} /></div>
           <div className="field"><label htmlFor="ef-b">Camp maximum age</label><input id="ef-b" className="input" type="number" min={0} max={120} value={f.campMaxAge} onChange={set("campMaxAge")} disabled={!canEdit} /></div>
