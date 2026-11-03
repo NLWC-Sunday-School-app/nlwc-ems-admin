@@ -26,3 +26,8 @@ pre.detail { white-space: pre-wrap; word-break: break-all; font-family: var(--fo
 
 .link-btn { background: none; border: 0; padding: 0; font: inherit; color: var(--primary); text-decoration: underline; cursor: pointer; }
 .link-btn:hover { text-decoration-thickness: 2px; }
+
+/* Use the whole window instead of a centred column, and keep card corners tight. */
+.admin-shell .page { max-width: none; }
+:root { --radius-lg: 6px; }
+.alert, .sensitive, .qr-box { border-radius: 6px; }
