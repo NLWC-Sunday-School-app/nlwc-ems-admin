@@ -127,6 +127,21 @@ function RegistrationDrawer({ row, onClose }: { row: StaffRegistration; onClose:
     } catch (e) { setCancelError(e); }
     finally { setCancelBusy(false); }
   };
+  const [resending, setResending] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendError, setResendError] = useState<unknown>(null);
+  const [resent, setResent] = useState(false);
+  const resend = async (reason: string) => {
+    setResendBusy(true);
+    setResendError(null);
+    try {
+      await api.post(`admin/registration/${row.id}/resend-confirmation`, { reason });
+      setResending(false);
+      setResent(true);
+      await qc.invalidateQueries({ queryKey: ["audit"] });
+    } catch (e) { setResendError(e); }
+    finally { setResendBusy(false); }
+  };
   const d = detail.data;
   const state = d?.state ?? row.state;
   const [asking, setAsking] = useState(false);
@@ -197,6 +212,12 @@ function RegistrationDrawer({ row, onClose }: { row: StaffRegistration; onClose:
           <section aria-labelledby="d-history"><h3 id="d-history" className="sm">History</h3>
             <ol className="sm" style={{ margin: 0, paddingLeft: "1.1rem" }}>{d.history.map((h, i) => (
               <li key={i}>{h.from ? `${h.from} → ` : ""}<b>{h.to}</b> <span className="muted">· {formatDateTime(h.at)}{h.actor ? ` · ${h.actor}` : ""}</span>{h.reason ? <div className="xs muted">“{h.reason}”</div> : null}</li>))}</ol></section>
+          {can("registrations:edit") && ["Submitted", "NeedsAction", "Confirmed", "Completed"].includes(d.state) && (
+            <div className="stack-2">
+              <button className="btn btn-secondary btn-sm" onClick={() => { setResendError(null); setResent(false); setResending(true); }}>Resend confirmation email…</button>
+              {resent && <div className="alert ok" role="status"><div>Confirmation email sent to the parent or guardian.</div></div>}
+            </div>
+          )}
           {d.cancellable && can("registrations:edit") && <div><button className="btn btn-danger btn-sm" onClick={() => { setCancelError(null); setCancelling(true); }}>Cancel registration…</button></div>}
         </div>
       )}
@@ -235,6 +256,9 @@ function RegistrationDrawer({ row, onClose }: { row: StaffRegistration; onClose:
           </>
         )}
       </div>
+      <ReasonDialog open={resending} title="Resend the confirmation email?" confirmLabel="Resend email" busy={resendBusy} error={resendError}
+        onCancel={() => setResending(false)} onConfirm={(r) => void resend(r)}
+        description={<>The parent or guardian of {row.givenName} {row.familyName} ({row.reference}) will be emailed the confirmation again, listing all their children registered for this event.</>} />
       <ReasonDialog open={cancelling} danger title="Cancel this registration?" confirmLabel="Cancel registration" busy={cancelBusy} error={cancelError}
         onCancel={() => setCancelling(false)} onConfirm={(r) => void cancel(r)}
         description={<>{row.givenName} {row.familyName} ({row.reference}) will be cancelled and their place released. This can't be undone.</>} />
