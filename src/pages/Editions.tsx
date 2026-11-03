@@ -53,14 +53,23 @@ export function EditionsPage() {
   );
 }
 
+/** "Bible Bootcamp 2026" or a pasted link becomes "bible-bootcamp-2026": lower case, words joined by single hyphens. */
+export function slugify(text: string): string {
+  return text.toLowerCase().replace(/^https?:\/\/[^/]*\/?/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+/, "").replace(/-{2,}/g, "-").slice(0, 100);
+}
+
 function NewEdition({ onDone }: { onDone: (id: string) => void }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [f, setF] = useState({
     templateCode: "BB", name: "", code: "", slug: "", startsOn: "", endsOn: "", venueName: "", venueAddress: "",
-    campMinAge: "", campMaxAge: "", campCapacity: "", pickupStart: "", pickupEnd: "",
+    maxAge: "", campMinAge: "", campMaxAge: "", campCapacity: "", pickupStart: "", pickupEnd: "",
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }));
+  // The web address fills itself in from the name until someone edits it; whatever is typed or pasted is cleaned into a valid one.
+  const [slugEdited, setSlugEdited] = useState(false);
+  const setName = (e: { target: { value: string } }) => setF((s) => ({ ...s, name: e.target.value, slug: slugEdited ? s.slug : slugify(e.target.value).replace(/-+$/, "") }));
+  const setSlug = (e: { target: { value: string } }) => { setSlugEdited(true); setF((s) => ({ ...s, slug: slugify(e.target.value) })); };
 
   const create = useMutation({
     mutationFn: (input: CreateEditionInput) => api.post<Edition>("edition", input),
@@ -76,9 +85,9 @@ function NewEdition({ onDone }: { onDone: (id: string) => void }) {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     create.mutate({
-      templateCode: f.templateCode, name: f.name.trim(), code: f.code.trim().toUpperCase(), slug: f.slug.trim(), startsOn: f.startsOn, endsOn: f.endsOn,
+      templateCode: f.templateCode, name: f.name.trim(), code: f.code.trim().toUpperCase(), slug: slugify(f.slug).replace(/-+$/, ""), startsOn: f.startsOn, endsOn: f.endsOn,
       venueName: f.venueName.trim() || undefined, venueAddress: f.venueAddress.trim() || undefined,
-      campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
+      maxAge: intOrNull(f.maxAge), campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
       pickupWindowStart: timeOrNull(f.pickupStart), pickupWindowEnd: timeOrNull(f.pickupEnd),
     });
   };
@@ -89,14 +98,15 @@ function NewEdition({ onDone }: { onDone: (id: string) => void }) {
       <div className="form-grid">
         <div className="field"><label htmlFor="ne-t">Template</label>
           <select id="ne-t" className="select" value={f.templateCode} onChange={set("templateCode")}>
-            <option value="BB">Bible Bootcamp</option><option value="SS">Singlz Summit</option><option value="CP">Couples</option></select></div>
-        <div className="field"><label htmlFor="ne-n">Name</label><input id="ne-n" className="input" required maxLength={200} value={f.name} onChange={set("name")} placeholder="Bible Bootcamp 2026" /></div>
+            <option value="BB">Bible Bootcamp</option><option value="SS">Singlz Summit</option><option value="CP">Couples Retreat</option></select></div>
+        <div className="field"><label htmlFor="ne-n">Name</label><input id="ne-n" className="input" required maxLength={200} value={f.name} onChange={setName} placeholder="Bible Bootcamp 2026" /></div>
         <div className="field"><label htmlFor="ne-c">Code <span className="muted">used in references</span></label><input id="ne-c" className="input" required maxLength={20} value={f.code} onChange={set("code")} placeholder="BB26" /></div>
-        <div className="field"><label htmlFor="ne-s">Web address</label><input id="ne-s" className="input" required pattern="[a-z0-9]+(-[a-z0-9]+)*" title="Lower-case words joined by hyphens" value={f.slug} onChange={set("slug")} placeholder="bible-bootcamp-2026" /></div>
+        <div className="field"><label htmlFor="ne-s">Web address name <span className="muted">just the last part, e.g. bible-bootcamp-2026</span></label><input id="ne-s" className="input" required pattern="[a-z0-9]+(-[a-z0-9]+)*" title="Lower-case words joined by hyphens, not a full link" value={f.slug} onChange={setSlug} onBlur={() => setF((s) => ({ ...s, slug: s.slug.replace(/-+$/, "") }))} placeholder="bible-bootcamp-2026" /></div>
         <div className="field"><label htmlFor="ne-a">First day</label><input id="ne-a" className="input" type="date" required value={f.startsOn} onChange={set("startsOn")} /></div>
         <div className="field"><label htmlFor="ne-b">Last day</label><input id="ne-b" className="input" type="date" required min={f.startsOn} value={f.endsOn} onChange={set("endsOn")} /></div>
         <div className="field"><label htmlFor="ne-v">Venue</label><input id="ne-v" className="input" maxLength={200} value={f.venueName} onChange={set("venueName")} /></div>
         <div className="field"><label htmlFor="ne-va">Venue address</label><input id="ne-va" className="input" maxLength={500} value={f.venueAddress} onChange={set("venueAddress")} /></div>
+        <div className="field"><label htmlFor="ne-max">Maximum age <span className="muted">anyone older cannot register</span></label><input id="ne-max" className="input" type="number" min={0} max={120} value={f.maxAge} onChange={set("maxAge")} /></div>
         <div className="field"><label htmlFor="ne-cmin">Camp minimum age</label><input id="ne-cmin" className="input" type="number" min={0} max={120} value={f.campMinAge} onChange={set("campMinAge")} /></div>
         <div className="field"><label htmlFor="ne-cmax">Camp maximum age</label><input id="ne-cmax" className="input" type="number" min={0} max={120} value={f.campMaxAge} onChange={set("campMaxAge")} /></div>
         <div className="field"><label htmlFor="ne-cap">Camp capacity</label><input id="ne-cap" className="input" type="number" min={0} max={100000} value={f.campCapacity} onChange={set("campCapacity")} /></div>
@@ -201,7 +211,7 @@ export function EditionDetail() {
 
 function EditionForm({ edition, canEdit, onSaved, onUse }: { edition: Edition; canEdit: boolean; onSaved: () => Promise<void>; onUse: () => void }) {
   const [f, setF] = useState({
-    name: edition.name, campMinAge: edition.campMinAge?.toString() ?? "", campMaxAge: edition.campMaxAge?.toString() ?? "", campCapacity: edition.campCapacity?.toString() ?? "",
+    name: edition.name, maxAge: edition.maxAge?.toString() ?? "", campMinAge: edition.campMinAge?.toString() ?? "", campMaxAge: edition.campMaxAge?.toString() ?? "", campCapacity: edition.campCapacity?.toString() ?? "",
     pickupStart: timeValue(edition.pickupWindowStart), pickupEnd: timeValue(edition.pickupWindowEnd),
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }));
@@ -216,7 +226,7 @@ function EditionForm({ edition, canEdit, onSaved, onUse }: { edition: Edition; c
     ev.preventDefault();
     setSaved(false);
     save.mutate({
-      name: f.name.trim(), campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
+      name: f.name.trim(), maxAge: intOrNull(f.maxAge), campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
       pickupWindowStart: timeOrNull(f.pickupStart), pickupWindowEnd: timeOrNull(f.pickupEnd),
     });
   };
@@ -239,6 +249,7 @@ function EditionForm({ edition, canEdit, onSaved, onUse }: { edition: Edition; c
         <div className="card-h"><h3 id="ed-form">Settings</h3></div>
         <div className="field"><label htmlFor="ef-n">Name</label><input id="ef-n" className="input" required maxLength={200} value={f.name} onChange={set("name")} disabled={!canEdit} /></div>
         <div className="form-grid">
+          <div className="field"><label htmlFor="ef-max">Maximum age <span className="muted">anyone older cannot register</span></label><input id="ef-max" className="input" type="number" min={0} max={120} value={f.maxAge} onChange={set("maxAge")} disabled={!canEdit} /></div>
           <div className="field"><label htmlFor="ef-a">Camp minimum age</label><input id="ef-a" className="input" type="number" min={0} max={120} value={f.campMinAge} onChange={set("campMinAge")} disabled={!canEdit} /></div>
           <div className="field"><label htmlFor="ef-b">Camp maximum age</label><input id="ef-b" className="input" type="number" min={0} max={120} value={f.campMaxAge} onChange={set("campMaxAge")} disabled={!canEdit} /></div>
           <div className="field"><label htmlFor="ef-c">Camp capacity</label><input id="ef-c" className="input" type="number" min={0} max={100000} value={f.campCapacity} onChange={set("campCapacity")} disabled={!canEdit} /></div>

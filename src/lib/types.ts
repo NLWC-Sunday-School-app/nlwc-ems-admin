@@ -29,6 +29,7 @@ export type Edition = {
   startsOn: string;
   endsOn: string;
   ageReferenceDate: string;
+  maxAge?: number | null;
   campMinAge: number | null;
   campMaxAge: number | null;
   campCapacity: number | null;
@@ -52,6 +53,7 @@ export type CreateEditionInput = {
   endsOn: string;
   venueName?: string;
   venueAddress?: string;
+  maxAge?: number | null;
   campMinAge?: number | null;
   campMaxAge?: number | null;
   campCapacity?: number | null;
@@ -61,6 +63,7 @@ export type CreateEditionInput = {
 
 export type UpdateEditionInput = {
   name: string;
+  maxAge: number | null;
   campMinAge: number | null;
   campMaxAge: number | null;
   campCapacity: number | null;
