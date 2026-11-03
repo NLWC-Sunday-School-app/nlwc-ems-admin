@@ -189,7 +189,6 @@ export function EditionDetail() {
               </div>
             ))}
           </div>
-          <div className="note" style={{ marginTop: "var(--space-3)" }}>Switching a capability off removes its screens and API for this edition.</div>
         </div>
       </div>
 
@@ -212,7 +211,7 @@ export function EditionDetail() {
 
 function EditionForm({ edition, canEdit, onSaved, onUse }: { edition: Edition; canEdit: boolean; onSaved: () => Promise<void>; onUse: () => void }) {
   const [f, setF] = useState({
-    name: edition.name, minAge: edition.minAge?.toString() ?? "", maxAge: edition.maxAge?.toString() ?? "", campMinAge: edition.campMinAge?.toString() ?? "", campMaxAge: edition.campMaxAge?.toString() ?? "", campCapacity: edition.campCapacity?.toString() ?? "",
+    name: edition.name, slug: edition.slug, startsOn: edition.startsOn, endsOn: edition.endsOn, venueName: edition.venue?.name ?? "", venueAddress: edition.venue?.address ?? "", minAge: edition.minAge?.toString() ?? "", maxAge: edition.maxAge?.toString() ?? "", campMinAge: edition.campMinAge?.toString() ?? "", campMaxAge: edition.campMaxAge?.toString() ?? "", campCapacity: edition.campCapacity?.toString() ?? "",
     pickupStart: timeValue(edition.pickupWindowStart), pickupEnd: timeValue(edition.pickupWindowEnd),
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((s) => ({ ...s, [k]: e.target.value }));
@@ -227,7 +226,8 @@ function EditionForm({ edition, canEdit, onSaved, onUse }: { edition: Edition; c
     ev.preventDefault();
     setSaved(false);
     save.mutate({
-      name: f.name.trim(), minAge: intOrNull(f.minAge), maxAge: intOrNull(f.maxAge), campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
+      name: f.name.trim(), slug: f.slug || null, startsOn: f.startsOn || null, endsOn: f.endsOn || null,
+      venueName: f.venueName.trim() || null, venueAddress: f.venueAddress.trim() || null, minAge: intOrNull(f.minAge), maxAge: intOrNull(f.maxAge), campMinAge: intOrNull(f.campMinAge), campMaxAge: intOrNull(f.campMaxAge), campCapacity: intOrNull(f.campCapacity),
       pickupWindowStart: timeOrNull(f.pickupStart), pickupWindowEnd: timeOrNull(f.pickupEnd),
     });
   };
@@ -243,13 +243,18 @@ function EditionForm({ edition, canEdit, onSaved, onUse }: { edition: Edition; c
           <dt>Event days</dt><dd>{edition.days.map((d) => d.day).join(" · ")}</dd>
           <dt>Web address</dt><dd className="mono">{edition.slug}</dd>
         </dl>
-        <p className="xs muted" style={{ marginTop: "var(--space-3)" }}>Dates, code and address are fixed once an edition exists: they are in every reference and receipt.</p>
+        <p className="xs muted" style={{ marginTop: "var(--space-3)" }}>The event code is fixed once an edition exists: it is in every registration reference.</p>
         <button className="btn btn-ghost btn-sm" onClick={onUse}>Use this edition across the console</button>
       </div>
       <form className="card stack-3" onSubmit={submit} aria-labelledby="ed-form">
         <div className="card-h"><h3 id="ed-form">Settings</h3></div>
         <div className="field"><label htmlFor="ef-n">Name</label><input id="ef-n" className="input" required maxLength={200} value={f.name} onChange={set("name")} disabled={!canEdit} /></div>
+        <div className="field"><label htmlFor="ef-slug">Web address name <span className="muted">changing it changes the event's link</span></label><input id="ef-slug" className="input mono" required maxLength={100} value={f.slug} onChange={(e) => setF((s) => ({ ...s, slug: slugify(e.target.value) }))} disabled={!canEdit} /></div>
         <div className="form-grid">
+          <div className="field"><label htmlFor="ef-s">Starts on</label><input id="ef-s" className="input" type="date" required value={f.startsOn} onChange={set("startsOn")} disabled={!canEdit} /></div>
+          <div className="field"><label htmlFor="ef-e">Ends on</label><input id="ef-e" className="input" type="date" required min={f.startsOn} value={f.endsOn} onChange={set("endsOn")} disabled={!canEdit} /></div>
+          <div className="field"><label htmlFor="ef-vn">Venue name</label><input id="ef-vn" className="input" maxLength={200} value={f.venueName} onChange={set("venueName")} disabled={!canEdit} /></div>
+          <div className="field"><label htmlFor="ef-va">Venue address</label><input id="ef-va" className="input" maxLength={500} value={f.venueAddress} onChange={set("venueAddress")} disabled={!canEdit} /></div>
           <div className="field"><label htmlFor="ef-min">Minimum age <span className="muted">anyone younger cannot register</span></label><input id="ef-min" className="input" type="number" min={0} max={120} value={f.minAge} onChange={set("minAge")} disabled={!canEdit} /></div>
           <div className="field"><label htmlFor="ef-max">Maximum age <span className="muted">anyone older cannot register</span></label><input id="ef-max" className="input" type="number" min={0} max={120} value={f.maxAge} onChange={set("maxAge")} disabled={!canEdit} /></div>
           <div className="field"><label htmlFor="ef-a">Camp minimum age</label><input id="ef-a" className="input" type="number" min={0} max={120} value={f.campMinAge} onChange={set("campMinAge")} disabled={!canEdit} /></div>

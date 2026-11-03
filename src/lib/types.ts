@@ -65,6 +65,11 @@ export type CreateEditionInput = {
 
 export type UpdateEditionInput = {
   name: string;
+  slug?: string | null;
+  startsOn?: string | null;
+  endsOn?: string | null;
+  venueName?: string | null;
+  venueAddress?: string | null;
   minAge: number | null;
   maxAge: number | null;
   campMinAge: number | null;
