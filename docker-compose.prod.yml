@@ -1,0 +1,10 @@
+services:
+  admin:
+    image: ${IMAGE:?IMAGE must be set to the production image}
+    restart: unless-stopped
+    environment:
+      API_URL: ${API_URL:-http://host.docker.internal:8082}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3001:80"
