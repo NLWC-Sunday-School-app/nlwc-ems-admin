@@ -131,7 +131,7 @@ export type StaffRegistrationDetail = {
   person: { personId: string; givenName: string; familyName: string; dateOfBirth: string | null; gender: string | null; country: string | null; city: string | null };
   actors: { personId: string; name: string; role: string }[];
   consents: { kind: string; accepted: boolean; documentVersion: number; at: string }[];
-  emergencyContact: { fullName: string; relationship: string } | null;
+  emergencyContacts: { fullName: string; relationship: string }[];
   history: { from: RegistrationState | null; to: RegistrationState; actor: string | null; reason: string | null; at: string }[];
 };
 

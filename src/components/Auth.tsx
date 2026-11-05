@@ -3,6 +3,7 @@ import QRCode from "qrcode";
 import { ApiError, api } from "../lib/api";
 import { useSession } from "../lib/session";
 import { ErrorAlert } from "./ui";
+import { ThemeToggle } from "./ThemeToggle";
 import type { LoginResult } from "../lib/types";
 
 export function secretFromOtpauth(uri: string): string {
@@ -35,7 +36,7 @@ export function SignIn() {
   return (
     <main className="auth-wrap">
       <form className="card auth-card" onSubmit={submit} aria-labelledby="signin-h">
-        <div><span className="badge b-neutral">Staff console</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span className="badge b-neutral">Staff console</span><ThemeToggle /></div>
         <h1 id="signin-h">Sign in</h1>
         <p className="sm muted">For NLWC staff and volunteers. You will be asked for your authenticator code next.</p>
         <div className="field"><label htmlFor="email">Email</label>
@@ -108,7 +109,7 @@ export function MfaGate() {
   return (
     <main className="auth-wrap">
       <form className="card auth-card" onSubmit={verify} aria-labelledby="mfa-h">
-        <div><span className="badge b-warn">Step 2 of 2</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span className="badge b-warn">Step 2 of 2</span><ThemeToggle /></div>
         <h1 id="mfa-h">{!enrolled ? "Set up your authenticator" : "Enter your authenticator code"}</h1>
 
         {!enrolled && !uri && !error ? <p className="sm muted" role="status">Preparing your setup key…</p> : null}

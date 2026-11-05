@@ -207,8 +207,10 @@ function RegistrationDrawer({ row, onClose }: { row: StaffRegistration; onClose:
             {d.consents.length === 0 ? <p className="sm muted">Nothing answered yet.</p> : (
               <ul className="sm" style={{ margin: 0, paddingLeft: "1.1rem" }}>{d.consents.map((c) => (
                 <li key={c.kind}>{CONSENT_LABEL[c.kind] ?? c.kind}: <b>{c.accepted ? "Yes" : "No"}</b> <span className="muted">· {formatDateTime(c.at)}</span></li>))}</ul>)}</section>
-          <section aria-labelledby="d-contact"><h3 id="d-contact" className="sm">Emergency contact</h3>
-            <p className="sm">{d.emergencyContact ? <>{d.emergencyContact.fullName} <span className="muted">· {d.emergencyContact.relationship}</span></> : <span className="muted">None on file.</span>}</p></section>
+          <section aria-labelledby="d-contact"><h3 id="d-contact" className="sm">Emergency contacts</h3>
+            {d.emergencyContacts.length === 0
+              ? <p className="sm muted">None on file.</p>
+              : d.emergencyContacts.map((c, i) => <p className="sm" key={i}>{c.fullName} <span className="muted">· {c.relationship}</span></p>)}</section>
           <section aria-labelledby="d-history"><h3 id="d-history" className="sm">History</h3>
             <ol className="sm" style={{ margin: 0, paddingLeft: "1.1rem" }}>{d.history.map((h, i) => (
               <li key={i}>{h.from ? `${h.from} → ` : ""}<b>{h.to}</b> <span className="muted">· {formatDateTime(h.at)}{h.actor ? ` · ${h.actor}` : ""}</span>{h.reason ? <div className="xs muted">“{h.reason}”</div> : null}</li>))}</ol></section>
