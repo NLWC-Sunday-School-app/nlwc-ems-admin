@@ -207,7 +207,7 @@ function RegistrationDrawer({ row, onClose }: { row: StaffRegistration; onClose:
             {d.consents.length === 0 ? <p className="sm muted">Nothing answered yet.</p> : (
               <ul className="sm" style={{ margin: 0, paddingLeft: "1.1rem" }}>{d.consents.map((c) => (
                 <li key={c.kind}>{CONSENT_LABEL[c.kind] ?? c.kind}: <b>{c.accepted ? "Yes" : "No"}</b> <span className="muted">· {formatDateTime(c.at)}</span></li>))}</ul>)}</section>
-          <section aria-labelledby="d-contact"><h3 id="d-contact" className="sm">Emergency contacts</h3>
+          <section aria-labelledby="d-contact"><h3 id="d-contact" className="sm">Pick-up persons</h3>
             {d.emergencyContacts.length === 0
               ? <p className="sm muted">None on file.</p>
               : d.emergencyContacts.map((c, i) => <p className="sm" key={i}>{c.fullName} <span className="muted">· {c.relationship}</span></p>)}</section>
