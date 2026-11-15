@@ -11,7 +11,7 @@ const MODES: ParticipationMode[] = ["Day", "Camp", "Online"];
 const AGE_BANDS = [{ value: "under-3", label: "Under 3" }, { value: "3-9", label: "3 to 9" }, { value: "10-16", label: "10 to 16" }, { value: "17+", label: "17 and over" }];
 const CONSENT_LABEL: Record<string, string> = { Terms: "Event terms / pick-up notice", GuardianAuthorization: "Parent consent", MedicalEmergency: "Medical emergency", Media: "Photos and videos" };
 const CONSENT_TAG: Record<string, string> = { Terms: "Terms", GuardianAuthorization: "Parent consent", MedicalEmergency: "Medical", Media: "Media" };
-const CONSENT_ORDER = ["Terms", "GuardianAuthorization", "MedicalEmergency", "Media"];
+const CONSENT_ORDER = ["MedicalEmergency", "Media"];
 const PAGE = 25;
 
 /** Follows a fast-changing value (a search box) so each keystroke doesn't hit the API. */
