@@ -10,6 +10,8 @@ const STATES: RegistrationState[] = ["Draft", "Submitted", "NeedsAction", "Confi
 const MODES: ParticipationMode[] = ["Day", "Camp", "Online"];
 const AGE_BANDS = [{ value: "under-3", label: "Under 3" }, { value: "3-9", label: "3 to 9" }, { value: "10-16", label: "10 to 16" }, { value: "17+", label: "17 and over" }];
 const CONSENT_LABEL: Record<string, string> = { Terms: "Event terms / pick-up notice", GuardianAuthorization: "Parent consent", MedicalEmergency: "Medical emergency", Media: "Photos and videos" };
+const CONSENT_TAG: Record<string, string> = { Terms: "Terms", GuardianAuthorization: "Parent consent", MedicalEmergency: "Medical", Media: "Media" };
+const CONSENT_ORDER = ["Terms", "GuardianAuthorization", "MedicalEmergency", "Media"];
 const PAGE = 25;
 
 /** Follows a fast-changing value (a search box) so each keystroke doesn't hit the API. */
@@ -87,7 +89,7 @@ export function RegistrationsPage() {
           <Empty title="No registrations">{filtered ? "Nothing matches these filters." : "Nobody has started a registration for this edition yet."}</Empty>
         ) : (
           <div className="tbl-wrap"><table>
-            <thead><tr><th>Reference</th><th>Person</th><th>Mode</th><th>Age band</th><th>State</th>{showFlags && <th>Health</th>}<th>Started</th></tr></thead>
+            <thead><tr><th>Reference</th><th>Person</th><th>Mode</th><th>Age band</th><th>State</th><th>Permissions</th>{showFlags && <th>Health</th>}<th>Started</th></tr></thead>
             <tbody>{rows.map((r) => (
               <tr key={r.id} className="clickable" tabIndex={0} onClick={() => setOpen(r)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(r); } }} aria-label={`Open ${r.givenName} ${r.familyName}, ${r.reference}`}>
                 <td className="mono">{r.reference}</td>
@@ -95,6 +97,10 @@ export function RegistrationsPage() {
                 <td>{MODE_LABEL[r.participationMode]}</td>
                 <td>{r.ageBand ?? "—"}</td>
                 <td><span className={`badge ${STATE_BADGE[r.state]}`}>{r.state}</span></td>
+                <td><div className="row" style={{ flexWrap: "wrap", gap: 4 }}>{CONSENT_ORDER.map((k) => {
+                  const c = r.consents.find((x) => x.kind === k);
+                  return <span key={k} className={`badge ${c ? (c.accepted ? "b-ok" : "b-bad") : "b-neutral"}`} title={`${CONSENT_LABEL[k]}: ${c ? (c.accepted ? "Yes" : "No") : "Not answered"}`}>{CONSENT_TAG[k]}: {c ? (c.accepted ? "Yes" : "No") : "—"}</span>;
+                })}</div></td>
                 {showFlags && <td>{r.hasHealthFlags === null ? <span className="lock" title="Restricted">🔒 Restricted</span> : r.hasHealthFlags ? <span className="badge b-warn">Flagged</span> : <span className="muted">None</span>}</td>}
                 <td className="xs">{formatDateTime(r.dateCreated)}</td>
               </tr>))}</tbody></table></div>

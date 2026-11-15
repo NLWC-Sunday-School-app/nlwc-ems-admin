@@ -115,6 +115,7 @@ export type StaffRegistration = {
   ageBand: string | null;
   hasHealthFlags: boolean | null;
   dateCreated: string;
+  consents: { kind: string; accepted: boolean }[];
 };
 
 export type StaffRegistrationDetail = {
