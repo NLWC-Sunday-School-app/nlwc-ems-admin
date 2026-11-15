@@ -89,11 +89,12 @@ export function RegistrationsPage() {
           <Empty title="No registrations">{filtered ? "Nothing matches these filters." : "Nobody has started a registration for this edition yet."}</Empty>
         ) : (
           <div className="tbl-wrap"><table>
-            <thead><tr><th>Reference</th><th>Person</th><th>Mode</th><th>Age band</th><th>State</th><th>Permissions</th>{showFlags && <th>Health</th>}<th>Started</th></tr></thead>
+            <thead><tr><th>Reference</th><th>Person</th><th>Registrant</th><th>Mode</th><th>Age band</th><th>State</th><th>Permissions</th>{showFlags && <th>Health</th>}<th>Started</th></tr></thead>
             <tbody>{rows.map((r) => (
               <tr key={r.id} className="clickable" tabIndex={0} onClick={() => setOpen(r)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(r); } }} aria-label={`Open ${r.givenName} ${r.familyName}, ${r.reference}`}>
                 <td className="mono">{r.reference}</td>
                 <td><b>{r.givenName} {r.familyName}</b></td>
+                <td>{r.registrantName ?? <span className="muted">—</span>}</td>
                 <td>{MODE_LABEL[r.participationMode]}</td>
                 <td>{r.ageBand ?? "—"}</td>
                 <td><span className={`badge ${STATE_BADGE[r.state]}`}>{r.state}</span></td>

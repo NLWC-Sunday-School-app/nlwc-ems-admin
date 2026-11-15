@@ -116,6 +116,7 @@ export type StaffRegistration = {
   hasHealthFlags: boolean | null;
   dateCreated: string;
   consents: { kind: string; accepted: boolean }[];
+  registrantName: string | null;
 };
 
 export type StaffRegistrationDetail = {
